@@ -1,11 +1,13 @@
+project(test_google VERSION ${PROJECT_VERSION})
+
 file(GLOB_RECURSE SRC *.h *.hpp *.cpp)
 
-add_executable(test_google ${SRC})
+add_executable(${PROJECT_NAME} ${SRC})
 
-target_link_libraries(test_google PRIVATE
+target_link_libraries(${PROJECT_NAME} PRIVATE
 	GTest::gtest_main
 	helloworld_lib
 )
 
 include(GoogleTest)
-gtest_discover_tests(test_google)
+gtest_discover_tests(${PROJECT_NAME})
