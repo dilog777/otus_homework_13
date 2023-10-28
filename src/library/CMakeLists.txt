@@ -9,6 +9,8 @@ target_include_directories(${PROJECT_NAME} PUBLIC
 	${tensorflow_SOURCE_DIR}/include
 )
 
+find_library(tensorflow_lib tensorflow PATHS ${tensorflow_SOURCE_DIR}/lib/)
+
 target_link_libraries(${PROJECT_NAME} PRIVATE 
-	${tensorflow_SOURCE_DIR}/lib/tensorflow.lib
+	${tensorflow_lib}
 )

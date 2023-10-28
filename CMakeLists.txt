@@ -13,16 +13,16 @@ find_package(Boost COMPONENTS system REQUIRED)
 
 if (MSVC)
 	add_compile_options(/W4)
-	set(TENSORFLOW_PATH "https://storage.googleapis.com/tensorflow/libtensorflow/libtensorflow-cpu-windows-x86_64-2.10.0.zip")
+	set(TENSORFLOW_URL "https://storage.googleapis.com/tensorflow/libtensorflow/libtensorflow-cpu-windows-x86_64-2.10.0.zip")
 else()
 	add_compile_options(-Wall -Wextra -pedantic -Werror)
-	set(TENSORFLOW_PATH "https://storage.googleapis.com/tensorflow/libtensorflow/libtensorflow-cpu-linux-x86_64-2.14.0.tar.gz")
+	set(TENSORFLOW_URL "https://storage.googleapis.com/tensorflow/libtensorflow/libtensorflow-cpu-linux-x86_64-2.14.0.tar.gz")
 endif()
 
 include(FetchContent)
 FetchContent_Declare(
 	tensorflow
-	URL ${TENSORFLOW_PATH}
+	URL ${TENSORFLOW_URL}
 )
 FetchContent_MakeAvailable(tensorflow)
 
