@@ -85,7 +85,7 @@ size_t TfClassifier::predict(const features_t &feat) const
 
 TfClassifier::probas_t TfClassifier::predict_proba(const features_t &feat) const
 {
-	assert(_width * _height == feat.size());
+	assert(_width * _height == static_cast<int>(feat.size()));
 
 	// Preprocess input features
 	features_t preproc_features;
