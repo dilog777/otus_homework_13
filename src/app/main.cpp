@@ -1,6 +1,5 @@
-#include <iostream>
-
 #include <filesystem>
+#include <iostream>
 
 #include <boost/format.hpp>
 
@@ -36,7 +35,7 @@ int main(int argc, char *argv[])
 		}
 	}
 
-	auto clf = mnist::TfClassifier { modelPath, IMAGE_WIDTH, IMAGE_HEIGHT };
+	auto clf = TfClassifier { modelPath, IMAGE_WIDTH, IMAGE_HEIGHT };
 
 	std::cout << "Hello, World!" << std::endl;
 	return EXIT_SUCCESS;
