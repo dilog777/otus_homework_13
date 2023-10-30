@@ -71,10 +71,10 @@ int main(int argc, char *argv[])
 			continue;
 		}
 
-		int expectedPredict = data.front();
+		size_t expectedPredict = data.front();
 
 		TfClassifier::Features features;
-		for (int i = 1; i < data.size(); ++i)
+		for (size_t i = 1; i < data.size(); ++i)
 			features.push_back(static_cast<float>(data[i]) / 255);
 
 		++totalPredictions;
