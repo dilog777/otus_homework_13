@@ -8,12 +8,12 @@
 class Classifier
 {
 public:
-	using features_t = std::vector<float>;
-	using probas_t = std::vector<float>;
+	using Features = std::vector<float>;
+	using Probas = std::vector<float>;
 
 	virtual ~Classifier() = default;
 
-	virtual size_t num_classes() const = 0;
-	virtual size_t predict(const features_t &) const = 0;
-	virtual probas_t predict_proba(const features_t &) const = 0;
+	virtual size_t numClasses() const = 0;
+	virtual size_t predict(const Features &) const = 0;
+	virtual Probas predictProba(const Features &) const = 0;
 };
