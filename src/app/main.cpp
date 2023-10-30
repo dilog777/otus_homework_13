@@ -1,5 +1,6 @@
 #include <filesystem>
 #include <iostream>
+#include <memory>
 
 #include <boost/format.hpp>
 
@@ -49,12 +50,21 @@ int main(int argc, char *argv[])
 		return EXIT_FAILURE;
 	}
 
-	int truePredictions = 0;
-	int totalPredictions = 0;
+	std::unique_ptr<ImageClassifier> classifier;
+	try
+	{
+		classifier = std::make_unique<ImageClassifier>(modelPath, IMAGE_WIDTH, IMAGE_HEIGHT, IMAGE_CLASS_COUNT);
+	}
+	catch (const std::exception &ex)
+	{
+		std::cout << ex.what() << std::endl;
+		return EXIT_FAILURE;
+	}
 
 	int line = 0;
-	auto clf = ImageClassifier { modelPath, IMAGE_WIDTH, IMAGE_HEIGHT, IMAGE_CLASS_COUNT };
-	while (!reader.endFile())
+	int truePredictions = 0;
+	int totalPredictions = 0;
+	while (!reader.eof())
 	{
 		++line;
 
@@ -66,24 +76,33 @@ int main(int argc, char *argv[])
 			continue;
 		}
 
+		if (data.empty())
+			continue;
+
 		if (data.size() != IMAGE_WIDTH * IMAGE_HEIGHT + 1)
 		{
 			std::cout << (boost::format { ERROR_IN_LINE } % line % INCORRECT_NUMBER_ARGUMENTS) << std::endl;
 			continue;
 		}
 
-		size_t expectedPredict = data.front();
+		size_t predict;
+		size_t expectedPredict = static_cast<int>(data.front());
+		ImageClassifier::Features features { std::next(data.begin()), data.end() };
 
-		ImageClassifier::Features features;
-		for (size_t i = 1; i < data.size(); ++i)
-			features.push_back(static_cast<float>(data[i]) / 1);
+		try
+		{
+			predict = classifier->predict(features);
+		}
+		catch (const std::exception &ex)
+		{
+			std::cout << (boost::format { ERROR_IN_LINE } % line % ex.what()) << std::endl;
+			continue;
+		}
+
+		if (expectedPredict == predict)
+			++truePredictions;
 
 		++totalPredictions;
-		auto predict = clf.predict(features);
-		if (expectedPredict == predict)
-		{
-			++truePredictions;
-		}
 	}
 
 	if (totalPredictions == 0)

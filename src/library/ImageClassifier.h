@@ -14,13 +14,13 @@ public:
 	using Features = std::vector<float>;
 	using Probas = std::vector<float>;
 
-	ImageClassifier(const std::string &modelpath, int width, int height, int classCount);
+	ImageClassifier(const std::string &modelPath, int width, int height, int classCount);
 
 	ImageClassifier(const ImageClassifier &) = delete;
 	ImageClassifier &operator=(const ImageClassifier &) = delete;
 
-	size_t predict(const Features &) const;
-	Probas predictProba(const Features &) const;
+	size_t predict(const Features &features) const;
+	Probas predictProba(const Features &features) const;
 
 private:
 	static void deleteTfSession(TF_Session *);

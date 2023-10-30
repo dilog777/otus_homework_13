@@ -1,7 +1,8 @@
 #include "DataReader.h"
 
+#include <algorithm>
+
 const char *const VALUES_DELIMITER = ",";
-const char *const ERROR_GETLINE = "Read line error";
 const char *const ERROR_PARSE_LINE = "Parse line error";
 
 
@@ -47,29 +48,25 @@ void DataReader::close()
 
 
 
-bool DataReader::endFile() const
+bool DataReader::eof() const
 {
 	return _fileStream.eof();
 }
 
 
 
-std::vector<int> DataReader::readLine(std::string &error)
+std::vector<float> DataReader::readLine(std::string &error)
 {
 	std::string line;
 	if (!std::getline(_fileStream, line))
-	{
-		error = ERROR_GETLINE;
 		return {};
-	}
 
 	auto strings = split(line,VALUES_DELIMITER);
 	
-	std::vector<int> result;
+	std::vector<float> result;
 	try
 	{
-		for (const auto &str : strings)
-			result.push_back(std::stoi(str));
+		std::transform(strings.begin(), strings.end(), std::back_inserter(result), [](const std::string &str) { return std::stof(str); });
 	}
 	catch (...)
 	{

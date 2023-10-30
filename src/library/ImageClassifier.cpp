@@ -1,7 +1,6 @@
 #include "ImageClassifier.h"
 
 #include <algorithm>
-#include <cassert>
 #include <sstream>
 
 const char *const SESSION_TAGS = "serve";
@@ -17,18 +16,17 @@ static void dummyDeleter([[maybe_unused]] void *data, [[maybe_unused]] size_t le
 
 
 
-ImageClassifier::ImageClassifier(const std::string &modelpath, int width, int height, int classCount)
+ImageClassifier::ImageClassifier(const std::string &modelPath, int width, int height, int classCount)
 	: _width { width }
 	, _height { height }
 	, _classCount { classCount }
 {
-
 	StatusPtr status { TF_NewStatus(), TF_DeleteStatus };
-	_session.reset(TF_LoadSessionFromSavedModel(_sessionOptions.get(), nullptr, modelpath.c_str(), &SESSION_TAGS, SESSION_TAGS_COUNT, _graph.get(), nullptr, status.get()));
+	_session.reset(TF_LoadSessionFromSavedModel(_sessionOptions.get(), nullptr, modelPath.c_str(), &SESSION_TAGS, SESSION_TAGS_COUNT, _graph.get(), nullptr, status.get()));
 	if (TF_GetCode(status.get()) != TF_OK)
 	{
 		std::stringstream ss;
-		ss << " Unable to import graph from '" << modelpath << "': " << TF_Message(status.get());
+		ss << " Unable to import graph from '" << modelPath << "': " << TF_Message(status.get());
 		throw std::invalid_argument { ss.str() };
 	}
 
@@ -47,57 +45,56 @@ ImageClassifier::ImageClassifier(const std::string &modelpath, int width, int he
 
 
 
-size_t ImageClassifier::predict(const Features &feat) const
+size_t ImageClassifier::predict(const Features &features) const
 {
-	auto proba = predictProba(feat);
+	auto proba = predictProba(features);
 	auto argmax = std::max_element(proba.begin(), proba.end());
 	return std::distance(proba.begin(), argmax);
 }
 
 
 
-ImageClassifier::Probas ImageClassifier::predictProba(const Features &feat) const
+ImageClassifier::Probas ImageClassifier::predictProba(const Features &features) const
 {
-	assert(_width * _height == static_cast<int>(feat.size()));
-
 	// Preprocess input features
-	Features preproc_features;
-	preproc_features.reserve(feat.size());
-	// Divide each bytes by 255
-	std::transform(feat.begin(), feat.end(), std::back_inserter(preproc_features), [](float val) { return val / 255; });
-	std::vector<TF_Output> inputs;
-	std::vector<TF_Tensor *> input_values;
+	Features preprocFeatures;
+	preprocFeatures.reserve(features.size());
 
-	TF_Output input_opout = { _inputOperation, 0 };
-	inputs.push_back(input_opout);
+	// Divide each bytes by 255
+	std::transform(features.begin(), features.end(), std::back_inserter(preprocFeatures), [](float val) { return val / 255; });
+	std::vector<TF_Output> inputs;
+	std::vector<TF_Tensor *> inputValues;
+
+	TF_Output inputOpout = { _inputOperation, 0 };
+	inputs.push_back(inputOpout);
 
 	// Create variables to store the size of the input and output variables
-	const int num_bytes_in = _width * _height * sizeof(float);
-	const int num_bytes_out = _classCount * sizeof(float);
+	const int numBytesIn = _width * _height * sizeof(float);
+	const int numBytesOut = _classCount * sizeof(float);
 
 	// Set input dimensions - this should match the dimensionality of the input in
 	// the loaded graph, in this case it's three dimensional.
-	int64_t in_dims[] = { 1, _width, _height, 1 };
-	int64_t out_dims[] = { 1, static_cast<int64_t>(_classCount) };
+	int64_t inputDims[] = { 1, _width, _height, 1 };
+	int64_t outputDims[] = { 1, static_cast<int64_t>(_classCount) };
 
-	TensorPtr input { TF_NewTensor(TF_FLOAT, in_dims, 4, reinterpret_cast<void *>(preproc_features.data()), num_bytes_in, &dummyDeleter, 0), TF_DeleteTensor };
-	input_values.push_back(input.get());
+	TensorPtr input { TF_NewTensor(TF_FLOAT, inputDims, 4, reinterpret_cast<void *>(preprocFeatures.data()), numBytesIn, &dummyDeleter, 0), TF_DeleteTensor };
+	inputValues.push_back(input.get());
 
 	std::vector<TF_Output> outputs;
-	TF_Output output_opout = { _outputOperation, 0 };
-	outputs.push_back(output_opout);
+	TF_Output outputOpout = { _outputOperation, 0 };
+	outputs.push_back(outputOpout);
 
 	// Create TF_Tensor* vector
-	std::vector<TF_Tensor *> output_values(outputs.size(), nullptr);
+	std::vector<TF_Tensor *> outputValues(outputs.size(), nullptr);
 
 	// Similar to creating the input tensor, however here we don't yet have the
 	// output values, so we use TF_AllocateTensor()
-	TensorPtr output_value { TF_AllocateTensor(TF_FLOAT, out_dims, 2, num_bytes_out), TF_DeleteTensor };
-	output_values.push_back(output_value.get());
+	TensorPtr outputValue { TF_AllocateTensor(TF_FLOAT, outputDims, 2, numBytesOut), TF_DeleteTensor };
+	outputValues.push_back(outputValue.get());
 
 	StatusPtr status { TF_NewStatus(), TF_DeleteStatus };
 
-	TF_SessionRun(_session.get(), nullptr, &inputs[0], &input_values[0], static_cast<int>(inputs.size()), &outputs[0], &output_values[0], static_cast<int>(outputs.size()), nullptr, 0, nullptr,
+	TF_SessionRun(_session.get(), nullptr, &inputs[0], &inputValues[0], static_cast<int>(inputs.size()), &outputs[0], &outputValues[0], static_cast<int>(outputs.size()), nullptr, 0, nullptr,
 		status.get());
 	if (TF_GetCode(status.get()) != TF_OK)
 	{
@@ -107,11 +104,9 @@ ImageClassifier::Probas ImageClassifier::predictProba(const Features &feat) cons
 	}
 
 	Probas probas;
-	float *out_vals = static_cast<float *>(TF_TensorData(output_values[0]));
-	for (size_t i = 0; i < _classCount; ++i)
-	{
-		probas.push_back(*out_vals++);
-	}
+	float *outVals = static_cast<float *>(TF_TensorData(outputValues[0]));
+	for (int i = 0; i < _classCount; ++i)
+		probas.push_back(*outVals++);
 
 	return probas;
 }

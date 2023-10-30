@@ -15,8 +15,8 @@ public:
 	bool open(const std::string &filePath);
 	void close();
 
-	bool endFile() const;
-	std::vector<int> readLine(std::string &error);
+	bool eof() const;
+	std::vector<float> readLine(std::string &error);
 
 private:
 	std::ifstream _fileStream;
