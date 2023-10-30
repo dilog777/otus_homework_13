@@ -2,25 +2,25 @@
 
 #include <memory>
 #include <string>
+#include <vector>
 
 #include <tensorflow/c/c_api.h>
 
-#include "classifier.h"
 
 
-
-class TfClassifier : public Classifier
+class ImageClassifier
 {
 public:
-	TfClassifier(const std::string &modelpath, const int width, const int height);
+	using Features = std::vector<float>;
+	using Probas = std::vector<float>;
 
-	TfClassifier(const TfClassifier &) = delete;
-	TfClassifier &operator=(const TfClassifier &) = delete;
+	ImageClassifier(const std::string &modelpath, int width, int height, int classCount);
 
-	// Classifier interface
-	size_t numClasses() const override;
-	size_t predict(const Features &) const override;
-	Probas predictProba(const Features &) const override;
+	ImageClassifier(const ImageClassifier &) = delete;
+	ImageClassifier &operator=(const ImageClassifier &) = delete;
+
+	size_t predict(const Features &) const;
+	Probas predictProba(const Features &) const;
 
 private:
 	static void deleteTfSession(TF_Session *);
@@ -39,6 +39,7 @@ private:
 	TF_Operation *_inputOperation { nullptr };
 	TF_Operation *_outputOperation { nullptr };
 
-	int _width;
-	int _height;
+	const int _width;
+	const int _height;
+	const int _classCount;
 };

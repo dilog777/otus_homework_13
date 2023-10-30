@@ -1,52 +1,30 @@
-#include "TfClassifier.h"
+#include "ImageClassifier.h"
 
 #include <algorithm>
 #include <cassert>
-#include <cstdint>
-#include <fstream>
-#include <ios>
-#include <iterator>
-#include <memory>
 #include <sstream>
-#include <stdexcept>
-#include <vector>
 
+const char *const SESSION_TAGS = "serve";
+const int SESSION_TAGS_COUNT = 1;
 const char *const INPUT_OPERATION_NAME = "serving_default_input";
 const char *const OUTPUT_OPERATION_NAME = "StatefulPartitionedCall";
 
 
 
-void TfClassifier::deleteTfSession(TF_Session *SessionPtr)
-{
-	StatusPtr status { TF_NewStatus(), TF_DeleteStatus };
-	TF_DeleteSession(SessionPtr, status.get());
-	if (TF_GetCode(status.get()) != TF_OK)
-	{
-		std::stringstream ss;
-		ss << " Unable to delete TF_Session: " << TF_Message(status.get());
-		throw std::runtime_error { ss.str() };
-	}
-}
-
-
-
-static void dummy_deleter([[maybe_unused]] void *data, [[maybe_unused]] size_t length, [[maybe_unused]] void *arg)
+static void dummyDeleter([[maybe_unused]] void *data, [[maybe_unused]] size_t length, [[maybe_unused]] void *arg)
 {
 }
 
 
 
-TfClassifier::TfClassifier(const std::string &modelpath, const int width, const int height)
+ImageClassifier::ImageClassifier(const std::string &modelpath, int width, int height, int classCount)
 	: _width { width }
 	, _height { height }
+	, _classCount { classCount }
 {
 
 	StatusPtr status { TF_NewStatus(), TF_DeleteStatus };
-
-	TF_Buffer *RunOpts = NULL;
-	const char *tags = "serve";
-
-	_session.reset(TF_LoadSessionFromSavedModel(_sessionOptions.get(), RunOpts, modelpath.c_str(), &tags, 1, _graph.get(), nullptr, status.get()));
+	_session.reset(TF_LoadSessionFromSavedModel(_sessionOptions.get(), nullptr, modelpath.c_str(), &SESSION_TAGS, SESSION_TAGS_COUNT, _graph.get(), nullptr, status.get()));
 	if (TF_GetCode(status.get()) != TF_OK)
 	{
 		std::stringstream ss;
@@ -55,13 +33,13 @@ TfClassifier::TfClassifier(const std::string &modelpath, const int width, const 
 	}
 
 	_inputOperation = TF_GraphOperationByName(_graph.get(), INPUT_OPERATION_NAME);
-	if (_inputOperation == nullptr)
+	if (!_inputOperation)
 	{
 		throw std::runtime_error { "Input not found" };
 	}
 
 	_outputOperation = TF_GraphOperationByName(_graph.get(), OUTPUT_OPERATION_NAME);
-	if (_inputOperation == nullptr)
+	if (!_inputOperation)
 	{
 		throw std::runtime_error { "Output not found" };
 	}
@@ -69,14 +47,7 @@ TfClassifier::TfClassifier(const std::string &modelpath, const int width, const 
 
 
 
-size_t TfClassifier::numClasses() const
-{
-	return 10;
-}
-
-
-
-size_t TfClassifier::predict(const Features &feat) const
+size_t ImageClassifier::predict(const Features &feat) const
 {
 	auto proba = predictProba(feat);
 	auto argmax = std::max_element(proba.begin(), proba.end());
@@ -85,7 +56,7 @@ size_t TfClassifier::predict(const Features &feat) const
 
 
 
-TfClassifier::Probas TfClassifier::predictProba(const Features &feat) const
+ImageClassifier::Probas ImageClassifier::predictProba(const Features &feat) const
 {
 	assert(_width * _height == static_cast<int>(feat.size()));
 
@@ -102,14 +73,14 @@ TfClassifier::Probas TfClassifier::predictProba(const Features &feat) const
 
 	// Create variables to store the size of the input and output variables
 	const int num_bytes_in = _width * _height * sizeof(float);
-	const int num_bytes_out = static_cast<int>(numClasses()) * sizeof(float);
+	const int num_bytes_out = _classCount * sizeof(float);
 
 	// Set input dimensions - this should match the dimensionality of the input in
 	// the loaded graph, in this case it's three dimensional.
 	int64_t in_dims[] = { 1, _width, _height, 1 };
-	int64_t out_dims[] = { 1, static_cast<int64_t>(numClasses()) };
+	int64_t out_dims[] = { 1, static_cast<int64_t>(_classCount) };
 
-	TensorPtr input { TF_NewTensor(TF_FLOAT, in_dims, 4, reinterpret_cast<void *>(preproc_features.data()), num_bytes_in, &dummy_deleter, 0), TF_DeleteTensor };
+	TensorPtr input { TF_NewTensor(TF_FLOAT, in_dims, 4, reinterpret_cast<void *>(preproc_features.data()), num_bytes_in, &dummyDeleter, 0), TF_DeleteTensor };
 	input_values.push_back(input.get());
 
 	std::vector<TF_Output> outputs;
@@ -137,10 +108,24 @@ TfClassifier::Probas TfClassifier::predictProba(const Features &feat) const
 
 	Probas probas;
 	float *out_vals = static_cast<float *>(TF_TensorData(output_values[0]));
-	for (size_t i = 0; i < numClasses(); ++i)
+	for (size_t i = 0; i < _classCount; ++i)
 	{
 		probas.push_back(*out_vals++);
 	}
 
 	return probas;
+}
+
+
+
+void ImageClassifier::deleteTfSession(TF_Session *SessionPtr)
+{
+	StatusPtr status { TF_NewStatus(), TF_DeleteStatus };
+	TF_DeleteSession(SessionPtr, status.get());
+	if (TF_GetCode(status.get()) != TF_OK)
+	{
+		std::stringstream ss;
+		ss << " Unable to delete TF_Session: " << TF_Message(status.get());
+		throw std::runtime_error { ss.str() };
+	}
 }

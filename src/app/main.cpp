@@ -4,7 +4,7 @@
 #include <boost/format.hpp>
 
 #include "DataReader.h"
-#include "TfClassifier.h"
+#include "ImageClassifier.h"
 
 const char *const USAGE_MESSAGE = "Usage: fashio_mnist <DATA> <MODEL>";
 const char *const PATH_NOT_EXIST_MESSAGE = "Path '%1%' not exist";
@@ -16,6 +16,7 @@ const char *const NO_DATA = "No data to evaluate the model";
 
 const size_t IMAGE_WIDTH = 28;
 const size_t IMAGE_HEIGHT = 28;
+const size_t IMAGE_CLASS_COUNT = 10;
 
 
 
@@ -52,7 +53,7 @@ int main(int argc, char *argv[])
 	int totalPredictions = 0;
 
 	int line = 0;
-	auto clf = TfClassifier { modelPath, IMAGE_WIDTH, IMAGE_HEIGHT };
+	auto clf = ImageClassifier { modelPath, IMAGE_WIDTH, IMAGE_HEIGHT, IMAGE_CLASS_COUNT };
 	while (!reader.endFile())
 	{
 		++line;
@@ -73,9 +74,9 @@ int main(int argc, char *argv[])
 
 		size_t expectedPredict = data.front();
 
-		TfClassifier::Features features;
+		ImageClassifier::Features features;
 		for (size_t i = 1; i < data.size(); ++i)
-			features.push_back(static_cast<float>(data[i]) / 255);
+			features.push_back(static_cast<float>(data[i]) / 1);
 
 		++totalPredictions;
 		auto predict = clf.predict(features);
